@@ -6,6 +6,22 @@
  *                          COMBO
  *
  * ===============================================================*/
+/* Outer popup height that fits `count` rows: each row is item_height plus
+ * trailing spacing, plus combo top padding and the border nk_panel_begin
+ * subtracts. Combos always get NK_WINDOW_BORDER from nk_nonblock_begin. */
+NK_INTERN float
+nk_combo_calc_max_height(const struct nk_context *ctx, int count, int item_height)
+{
+    struct nk_vec2 spacing;
+    struct nk_vec2 padding;
+
+    spacing = ctx->style.window.spacing;
+    padding = nk_panel_get_padding(&ctx->style, NK_PANEL_COMBO);
+    return (float)count * (float)item_height
+        + (float)count * spacing.y
+        + padding.y
+        + 2.0f * ctx->style.window.combo_border;
+}
 NK_INTERN nk_bool
 nk_combo_begin(struct nk_context *ctx, struct nk_window *win,
     struct nk_vec2 size, nk_bool is_clicked, struct nk_rect header)
@@ -67,7 +83,7 @@ nk_combo_begin_text(struct nk_context *ctx, const char *selected, int len,
     if (s == NK_WIDGET_INVALID)
         return 0;
 
-    in = (win->layout->flags & NK_WINDOW_ROM || s == NK_WIDGET_ROM)? 0: &ctx->input;
+    in = (win->layout->flags & NK_WINDOW_ROM || s == NK_WIDGET_DISABLED || s == NK_WIDGET_ROM)? 0: &ctx->input;
     if (nk_button_behavior(&ctx->last_widget_state, header, in, NK_BUTTON_DEFAULT))
         is_clicked = nk_true;
 
@@ -83,19 +99,21 @@ nk_combo_begin_text(struct nk_context *ctx, const char *selected, int len,
         text.text = style->combo.label_normal;
     }
 
+    text.text = nk_rgb_factor(text.text, style->combo.color_factor);
+
     switch(background->type) {
         case NK_STYLE_ITEM_IMAGE:
             text.background = nk_rgba(0, 0, 0, 0);
-            nk_draw_image(&win->buffer, header, &background->data.image, nk_white);
+            nk_draw_image(&win->buffer, header, &background->data.image, nk_rgb_factor(nk_white, style->combo.color_factor));
             break;
         case NK_STYLE_ITEM_NINE_SLICE:
             text.background = nk_rgba(0, 0, 0, 0);
-            nk_draw_nine_slice(&win->buffer, header, &background->data.slice, nk_white);
+            nk_draw_nine_slice(&win->buffer, header, &background->data.slice, nk_rgb_factor(nk_white, style->combo.color_factor));
             break;
         case NK_STYLE_ITEM_COLOR:
             text.background = background->data.color;
-            nk_fill_rect(&win->buffer, header, style->combo.rounding, background->data.color);
-            nk_stroke_rect(&win->buffer, header, style->combo.rounding, style->combo.border, style->combo.border_color);
+            nk_fill_rect(&win->buffer, header, style->combo.rounding, nk_rgb_factor(background->data.color, style->combo.color_factor));
+            nk_stroke_rect(&win->buffer, header, style->combo.rounding, style->combo.border, nk_rgb_factor(style->combo.border_color, style->combo.color_factor));
             break;
     }
     {
@@ -175,7 +193,7 @@ nk_combo_begin_color(struct nk_context *ctx, struct nk_color color, struct nk_ve
     if (s == NK_WIDGET_INVALID)
         return 0;
 
-    in = (win->layout->flags & NK_WINDOW_ROM || s == NK_WIDGET_ROM)? 0: &ctx->input;
+    in = (win->layout->flags & NK_WINDOW_ROM || s == NK_WIDGET_DISABLED || s == NK_WIDGET_ROM)? 0: &ctx->input;
     if (nk_button_behavior(&ctx->last_widget_state, header, in, NK_BUTTON_DEFAULT))
         is_clicked = nk_true;
 
@@ -188,14 +206,14 @@ nk_combo_begin_color(struct nk_context *ctx, struct nk_color color, struct nk_ve
 
     switch(background->type) {
         case NK_STYLE_ITEM_IMAGE:
-            nk_draw_image(&win->buffer, header, &background->data.image, nk_white);
+            nk_draw_image(&win->buffer, header, &background->data.image, nk_rgb_factor(nk_white, style->combo.color_factor));
             break;
         case NK_STYLE_ITEM_NINE_SLICE:
-            nk_draw_nine_slice(&win->buffer, header, &background->data.slice, nk_white);
+            nk_draw_nine_slice(&win->buffer, header, &background->data.slice, nk_rgb_factor(nk_white, style->combo.color_factor));
             break;
         case NK_STYLE_ITEM_COLOR:
-            nk_fill_rect(&win->buffer, header, style->combo.rounding, background->data.color);
-            nk_stroke_rect(&win->buffer, header, style->combo.rounding, style->combo.border, style->combo.border_color);
+            nk_fill_rect(&win->buffer, header, style->combo.rounding, nk_rgb_factor(background->data.color, style->combo.color_factor));
+            nk_stroke_rect(&win->buffer, header, style->combo.rounding, style->combo.border, nk_rgb_factor(style->combo.border_color, style->combo.color_factor));
             break;
     }
     {
@@ -233,7 +251,7 @@ nk_combo_begin_color(struct nk_context *ctx, struct nk_color color, struct nk_ve
             bounds.w = (button.x - (style->combo.content_padding.x + style->combo.spacing.x)) - bounds.x;
         else
             bounds.w = header.w - 4 * style->combo.content_padding.x;
-        nk_fill_rect(&win->buffer, bounds, 0, color);
+        nk_fill_rect(&win->buffer, bounds, 0, nk_rgb_factor(color, style->combo.color_factor));
 
         /* draw open/close button */
         if (draw_button_symbol)
@@ -268,7 +286,7 @@ nk_combo_begin_symbol(struct nk_context *ctx, enum nk_symbol_type symbol, struct
     if (s == NK_WIDGET_INVALID)
         return 0;
 
-    in = (win->layout->flags & NK_WINDOW_ROM || s == NK_WIDGET_ROM)? 0: &ctx->input;
+    in = (win->layout->flags & NK_WINDOW_ROM || s == NK_WIDGET_DISABLED || s == NK_WIDGET_ROM)? 0: &ctx->input;
     if (nk_button_behavior(&ctx->last_widget_state, header, in, NK_BUTTON_DEFAULT))
         is_clicked = nk_true;
 
@@ -284,19 +302,21 @@ nk_combo_begin_symbol(struct nk_context *ctx, enum nk_symbol_type symbol, struct
         symbol_color = style->combo.symbol_hover;
     }
 
+    symbol_color = nk_rgb_factor(symbol_color, style->combo.color_factor);
+
     switch(background->type) {
         case NK_STYLE_ITEM_IMAGE:
             sym_background = nk_rgba(0, 0, 0, 0);
-            nk_draw_image(&win->buffer, header, &background->data.image, nk_white);
+            nk_draw_image(&win->buffer, header, &background->data.image, nk_rgb_factor(nk_white, style->combo.color_factor));
             break;
         case NK_STYLE_ITEM_NINE_SLICE:
             sym_background = nk_rgba(0, 0, 0, 0);
-            nk_draw_nine_slice(&win->buffer, header, &background->data.slice, nk_white);
+            nk_draw_nine_slice(&win->buffer, header, &background->data.slice, nk_rgb_factor(nk_white, style->combo.color_factor));
             break;
         case NK_STYLE_ITEM_COLOR:
             sym_background = background->data.color;
-            nk_fill_rect(&win->buffer, header, style->combo.rounding, background->data.color);
-            nk_stroke_rect(&win->buffer, header, style->combo.rounding, style->combo.border, style->combo.border_color);
+            nk_fill_rect(&win->buffer, header, style->combo.rounding, nk_rgb_factor(background->data.color, style->combo.color_factor));
+            nk_stroke_rect(&win->buffer, header, style->combo.rounding, style->combo.border, nk_rgb_factor(style->combo.border_color, style->combo.color_factor));
             break;
     }
     {
@@ -328,7 +348,7 @@ nk_combo_begin_symbol(struct nk_context *ctx, enum nk_symbol_type symbol, struct
         bounds.x = header.x + style->combo.content_padding.x;
         bounds.w = (button.x - style->combo.content_padding.y) - bounds.x;
         nk_draw_symbol(&win->buffer, symbol, bounds, sym_background, symbol_color,
-            1.0f, style->font);
+            style->combo.border, style->font);
 
         /* draw open/close button */
         nk_draw_button_symbol(&win->buffer, &bounds, &content, ctx->last_widget_state,
@@ -362,7 +382,7 @@ nk_combo_begin_symbol_text(struct nk_context *ctx, const char *selected, int len
     s = nk_widget(&header, ctx);
     if (!s) return 0;
 
-    in = (win->layout->flags & NK_WINDOW_ROM || s == NK_WIDGET_ROM)? 0: &ctx->input;
+    in = (win->layout->flags & NK_WINDOW_ROM || s == NK_WIDGET_DISABLED || s == NK_WIDGET_ROM)? 0: &ctx->input;
     if (nk_button_behavior(&ctx->last_widget_state, header, in, NK_BUTTON_DEFAULT))
         is_clicked = nk_true;
 
@@ -381,19 +401,22 @@ nk_combo_begin_symbol_text(struct nk_context *ctx, const char *selected, int len
         text.text = style->combo.label_normal;
     }
 
+    text.text = nk_rgb_factor(text.text, style->combo.color_factor);
+    symbol_color = nk_rgb_factor(symbol_color, style->combo.color_factor);
+
     switch(background->type) {
         case NK_STYLE_ITEM_IMAGE:
             text.background = nk_rgba(0, 0, 0, 0);
-            nk_draw_image(&win->buffer, header, &background->data.image, nk_white);
+            nk_draw_image(&win->buffer, header, &background->data.image, nk_rgb_factor(nk_white, style->combo.color_factor));
             break;
         case NK_STYLE_ITEM_NINE_SLICE:
             text.background = nk_rgba(0, 0, 0, 0);
-            nk_draw_nine_slice(&win->buffer, header, &background->data.slice, nk_white);
+            nk_draw_nine_slice(&win->buffer, header, &background->data.slice, nk_rgb_factor(nk_white, style->combo.color_factor));
             break;
         case NK_STYLE_ITEM_COLOR:
             text.background = background->data.color;
-            nk_fill_rect(&win->buffer, header, style->combo.rounding, background->data.color);
-            nk_stroke_rect(&win->buffer, header, style->combo.rounding, style->combo.border, style->combo.border_color);
+            nk_fill_rect(&win->buffer, header, style->combo.rounding, nk_rgb_factor(background->data.color, style->combo.color_factor));
+            nk_stroke_rect(&win->buffer, header, style->combo.rounding, style->combo.border, nk_rgb_factor(style->combo.border_color, style->combo.color_factor));
             break;
     }
     {
@@ -428,7 +451,7 @@ nk_combo_begin_symbol_text(struct nk_context *ctx, const char *selected, int len
         image.h = header.h - 2 * style->combo.content_padding.y;
         image.w = image.h;
         nk_draw_symbol(&win->buffer, symbol, image, text.background, symbol_color,
-            1.0f, style->font);
+            style->combo.border, style->font);
 
         /* draw label */
         text.padding = nk_vec2(0,0);
@@ -464,7 +487,7 @@ nk_combo_begin_image(struct nk_context *ctx, struct nk_image img, struct nk_vec2
     if (s == NK_WIDGET_INVALID)
         return 0;
 
-    in = (win->layout->flags & NK_WINDOW_ROM || s == NK_WIDGET_ROM)? 0: &ctx->input;
+    in = (win->layout->flags & NK_WINDOW_ROM || s == NK_WIDGET_DISABLED || s == NK_WIDGET_ROM)? 0: &ctx->input;
     if (nk_button_behavior(&ctx->last_widget_state, header, in, NK_BUTTON_DEFAULT))
         is_clicked = nk_true;
 
@@ -477,14 +500,14 @@ nk_combo_begin_image(struct nk_context *ctx, struct nk_image img, struct nk_vec2
 
     switch (background->type) {
         case NK_STYLE_ITEM_IMAGE:
-            nk_draw_image(&win->buffer, header, &background->data.image, nk_white);
+            nk_draw_image(&win->buffer, header, &background->data.image, nk_rgb_factor(nk_white, style->combo.color_factor));
             break;
         case NK_STYLE_ITEM_NINE_SLICE:
-            nk_draw_nine_slice(&win->buffer, header, &background->data.slice, nk_white);
+            nk_draw_nine_slice(&win->buffer, header, &background->data.slice, nk_rgb_factor(nk_white, style->combo.color_factor));
             break;
         case NK_STYLE_ITEM_COLOR:
-            nk_fill_rect(&win->buffer, header, style->combo.rounding, background->data.color);
-            nk_stroke_rect(&win->buffer, header, style->combo.rounding, style->combo.border, style->combo.border_color);
+            nk_fill_rect(&win->buffer, header, style->combo.rounding, nk_rgb_factor(background->data.color, style->combo.color_factor));
+            nk_stroke_rect(&win->buffer, header, style->combo.rounding, style->combo.border, nk_rgb_factor(style->combo.border_color, style->combo.color_factor));
             break;
     }
     {
@@ -522,7 +545,7 @@ nk_combo_begin_image(struct nk_context *ctx, struct nk_image img, struct nk_vec2
             bounds.w = (button.x - style->combo.content_padding.y) - bounds.x;
         else
             bounds.w = header.w - 2 * style->combo.content_padding.x;
-        nk_draw_image(&win->buffer, bounds, &img, nk_white);
+        nk_draw_image(&win->buffer, bounds, &img, nk_rgb_factor(nk_white, style->combo.color_factor));
 
         /* draw open/close button */
         if (draw_button_symbol)
@@ -556,7 +579,7 @@ nk_combo_begin_image_text(struct nk_context *ctx, const char *selected, int len,
     s = nk_widget(&header, ctx);
     if (!s) return 0;
 
-    in = (win->layout->flags & NK_WINDOW_ROM || s == NK_WIDGET_ROM)? 0: &ctx->input;
+    in = (win->layout->flags & NK_WINDOW_ROM || s == NK_WIDGET_DISABLED || s == NK_WIDGET_ROM)? 0: &ctx->input;
     if (nk_button_behavior(&ctx->last_widget_state, header, in, NK_BUTTON_DEFAULT))
         is_clicked = nk_true;
 
@@ -572,19 +595,21 @@ nk_combo_begin_image_text(struct nk_context *ctx, const char *selected, int len,
         text.text = style->combo.label_normal;
     }
 
+    text.text = nk_rgb_factor(text.text, style->combo.color_factor);
+
     switch(background->type) {
         case NK_STYLE_ITEM_IMAGE:
             text.background = nk_rgba(0, 0, 0, 0);
-            nk_draw_image(&win->buffer, header, &background->data.image, nk_white);
+            nk_draw_image(&win->buffer, header, &background->data.image, nk_rgb_factor(nk_white, style->combo.color_factor));
             break;
         case NK_STYLE_ITEM_NINE_SLICE:
             text.background = nk_rgba(0, 0, 0, 0);
-            nk_draw_nine_slice(&win->buffer, header, &background->data.slice, nk_white);
+            nk_draw_nine_slice(&win->buffer, header, &background->data.slice, nk_rgb_factor(nk_white, style->combo.color_factor));
             break;
         case NK_STYLE_ITEM_COLOR:
             text.background = background->data.color;
-            nk_fill_rect(&win->buffer, header, style->combo.rounding, background->data.color);
-            nk_stroke_rect(&win->buffer, header, style->combo.rounding, style->combo.border, style->combo.border_color);
+            nk_fill_rect(&win->buffer, header, style->combo.rounding, nk_rgb_factor(background->data.color, style->combo.color_factor));
+            nk_stroke_rect(&win->buffer, header, style->combo.rounding, style->combo.border, nk_rgb_factor(style->combo.border_color, style->combo.color_factor));
             break;
     }
     {
@@ -623,7 +648,7 @@ nk_combo_begin_image_text(struct nk_context *ctx, const char *selected, int len,
         image.y = header.y + style->combo.content_padding.y;
         image.h = header.h - 2 * style->combo.content_padding.y;
         image.w = image.h;
-        nk_draw_image(&win->buffer, image, &img, nk_white);
+        nk_draw_image(&win->buffer, image, &img, nk_rgb_factor(nk_white, style->combo.color_factor));
 
         /* draw label */
         text.padding = nk_vec2(0,0);
@@ -693,13 +718,11 @@ NK_API void nk_combo_close(struct nk_context *ctx)
     nk_contextual_close(ctx);
 }
 NK_API int
-nk_combo(struct nk_context *ctx, const char **items, int count,
+nk_combo(struct nk_context *ctx, const char *const *items, int count,
     int selected, int item_height, struct nk_vec2 size)
 {
     int i = 0;
-    int max_height;
-    struct nk_vec2 item_spacing;
-    struct nk_vec2 window_padding;
+    float max_height;
 
     NK_ASSERT(ctx);
     NK_ASSERT(items);
@@ -707,11 +730,8 @@ nk_combo(struct nk_context *ctx, const char **items, int count,
     if (!ctx || !items ||!count)
         return selected;
 
-    item_spacing = ctx->style.window.spacing;
-    window_padding = nk_panel_get_padding(&ctx->style, ctx->current->layout->type);
-    max_height = count * item_height + count * (int)item_spacing.y;
-    max_height += (int)item_spacing.y * 2 + (int)window_padding.y * 2;
-    size.y = NK_MIN(size.y, (float)max_height);
+    max_height = nk_combo_calc_max_height(ctx, count, item_height);
+    size.y = NK_MIN(size.y, max_height);
     if (nk_combo_begin_label(ctx, items[selected], size)) {
         nk_layout_row_dynamic(ctx, (float)item_height, 1);
         for (i = 0; i < count; ++i) {
@@ -727,9 +747,7 @@ nk_combo_separator(struct nk_context *ctx, const char *items_separated_by_separa
     int separator, int selected, int count, int item_height, struct nk_vec2 size)
 {
     int i;
-    int max_height;
-    struct nk_vec2 item_spacing;
-    struct nk_vec2 window_padding;
+    float max_height;
     const char *current_item;
     const char *iter;
     int length = 0;
@@ -739,12 +757,8 @@ nk_combo_separator(struct nk_context *ctx, const char *items_separated_by_separa
     if (!ctx || !items_separated_by_separator)
         return selected;
 
-    /* calculate popup window */
-    item_spacing = ctx->style.window.spacing;
-    window_padding = nk_panel_get_padding(&ctx->style, ctx->current->layout->type);
-    max_height = count * item_height + count * (int)item_spacing.y;
-    max_height += (int)item_spacing.y * 2 + (int)window_padding.y * 2;
-    size.y = NK_MIN(size.y, (float)max_height);
+    max_height = nk_combo_calc_max_height(ctx, count, item_height);
+    size.y = NK_MIN(size.y, max_height);
 
     /* find selected item */
     current_item = items_separated_by_separator;
@@ -782,9 +796,7 @@ nk_combo_callback(struct nk_context *ctx, void(*item_getter)(void*, int, const c
     void *userdata, int selected, int count, int item_height, struct nk_vec2 size)
 {
     int i;
-    int max_height;
-    struct nk_vec2 item_spacing;
-    struct nk_vec2 window_padding;
+    float max_height;
     const char *item;
 
     NK_ASSERT(ctx);
@@ -792,12 +804,8 @@ nk_combo_callback(struct nk_context *ctx, void(*item_getter)(void*, int, const c
     if (!ctx || !item_getter)
         return selected;
 
-    /* calculate popup window */
-    item_spacing = ctx->style.window.spacing;
-    window_padding = nk_panel_get_padding(&ctx->style, ctx->current->layout->type);
-    max_height = count * item_height + count * (int)item_spacing.y;
-    max_height += (int)item_spacing.y * 2 + (int)window_padding.y * 2;
-    size.y = NK_MIN(size.y, (float)max_height);
+    max_height = nk_combo_calc_max_height(ctx, count, item_height);
+    size.y = NK_MIN(size.y, max_height);
 
     item_getter(userdata, selected, &item);
     if (nk_combo_begin_label(ctx, item, size)) {
@@ -810,30 +818,37 @@ nk_combo_callback(struct nk_context *ctx, void(*item_getter)(void*, int, const c
         nk_combo_end(ctx);
     } return selected;
 }
-NK_API void
-nk_combobox(struct nk_context *ctx, const char **items, int count,
+NK_API nk_bool
+nk_combobox(struct nk_context *ctx, const char *const *items, int count,
     int *selected, int item_height, struct nk_vec2 size)
 {
+    int tmp = *selected;
     *selected = nk_combo(ctx, items, count, *selected, item_height, size);
+    return tmp != *selected;
 }
-NK_API void
+NK_API nk_bool
 nk_combobox_string(struct nk_context *ctx, const char *items_separated_by_zeros,
     int *selected, int count, int item_height, struct nk_vec2 size)
 {
+    int tmp = *selected;
     *selected = nk_combo_string(ctx, items_separated_by_zeros, *selected, count, item_height, size);
+    return tmp != *selected;
 }
-NK_API void
+NK_API nk_bool
 nk_combobox_separator(struct nk_context *ctx, const char *items_separated_by_separator,
     int separator, int *selected, int count, int item_height, struct nk_vec2 size)
 {
+    int tmp = *selected;
     *selected = nk_combo_separator(ctx, items_separated_by_separator, separator,
                                     *selected, count, item_height, size);
+    return tmp != *selected;
 }
-NK_API void
+NK_API nk_bool
 nk_combobox_callback(struct nk_context *ctx,
     void(*item_getter)(void* data, int id, const char **out_text),
     void *userdata, int *selected, int count, int item_height, struct nk_vec2 size)
 {
+    int tmp = *selected;
     *selected = nk_combo_callback(ctx, item_getter, userdata,  *selected, count, item_height, size);
+    return tmp != *selected;
 }
-
